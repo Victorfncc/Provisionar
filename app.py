@@ -29,7 +29,7 @@ def send_command(cmd, sleep=1.5):
 @app.route("/")
 def index():
     connected = ssh_client is not None and ssh_shell is not None
-    return render_template("index.html", connected=connected)
+    return render_template("terminal.html", connected=connected)
 
 @app.route("/connect", methods=["POST"])
 def connect():
