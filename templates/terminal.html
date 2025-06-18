@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Sistema de Provisionamento ONU</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+    <style>
+        /* Seu CSS aqui, mantive o original */
+        .terminal {
+            font-family: 'Courier New', monospace;
+            background-color: #1e1e1e;
+            color: #f0f0f0;
+            height: 300px;
+            overflow-y: auto;
+            border-radius: 8px;
+            padding: 12px;
+            white-space: pre-wrap;
+        }
+
+        .terminal-input {
+            background-color: transparent;
+            border: none;
+            color: #000000;
+            width: 90%;
+            outline: none;
+            caret-color: black;
+        }
+
+        .prompt {
+            color: #4CAF50;
+        }
+
+        .command-line {
+            display: flex;
+            align-items: center;
+            margin-top: 8px;
+        }
+
+        .scrollbar-hide::-webkit-scrollbar {
+            display: none;
+        }
+
+        .scrollbar-hide {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+    </style>
+</head>
+
+<body class="bg-gray-100 min-h-screen">
+    <div class="container mx-auto px-4 py-6 max-w-md">
+        <div class="bg-white rounded-xl shadow-lg overflow-hidden">
+            <!-- Header -->
+            <div class="bg-blue-600 px-4 py-3 flex items-center justify-between">
+                <div class="flex items-center">
+                    <i class="fas fa-network-wired text-white text-xl mr-2"></i>
+                    <h1 class="text-white font-bold text-lg">Provisionamento ONU</h1>
+                </div>
+                <div class="text-white text-sm">
+                    <span class="bg-blue-800 px-2 py-1 rounded">STelnet</span>
+                </div>
+            </div>
+
+            <!-- Connection Status -->
+            <div class="px-4 py-3 border-b">
+                <div class="flex items-center">
+                    <div id="connection-indicator" class="w-3 h-3 rounded-full bg-red-500 mr-2"></div>
+                    <span id="connection-status-text" class="text-gray-600">Desconectado</span>
+                </div>
+                <div class="mt-1 text-sm text-gray-500">
+                    OLT: 10.11.104.2:23
+                </div>
+            </div>
+
+            <!-- Connection Form -->
+            <div class="px-4 py-3">
+                <div class="mb-4">
+                    <label class="block text-gray-700 text-sm font-bold mb-2" for="client-name">
+                        Nome do Cliente
+                    </label>
+                    <input id="client-name" type="text" placeholder="Digite o nome do cliente"
+                        class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" />
+                </div>
+                <div class="mb-4">
+                    <button id="provision-btn"
+                        class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-4 rounded-lg flex items-center justify-center"
+                        disabled>
+                        <i class="fas fa-cog mr-2"></i>
+                        Provisionar
+                    </button>
+                </div>
+
+                <button id="connect-btn"
+                    class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg flex items-center justify-center">
+                    <i class="fas fa-plug mr-2"></i>
+                    Conectar à OLT
+                </button>
+            </div>
+
+            <!-- Terminal Section -->
+            <div class="px-4 py-3 bg-gray-50">
+                <h2 class="text-gray-700 font-bold mb-2 flex items-center">
+                    <i class="fas fa-terminal mr-2"></i>
+                    Terminal STelnet
+                </h2>
+
+                <div id="terminal-output" class="terminal scrollbar-hide">
+                    <div class="text-gray-400 text-sm">
+                        Sistema de Provisionamento ONU via STelnet<br />
+                        Digite 'help' para ver os comandos disponíveis<br /><br />
+                    </div>
+                    <div class="text-yellow-400">
+                        Waiting for connection...
+                    </div>
+                    <div class="text-green-400">
+                        user@stelnet:~$
+                    </div>
+                </div>
+
+                <div class="command-line mt-2">
+                    <span class="prompt mr-2">user@stelnet:~$</span>
+                    <input type="text" id="command-input" class="terminal-input" placeholder="help" disabled />
+                    <button id="enter-btn"
+                        class="ml-2 bg-blue-600 hover:bg-blue-700 text-white font-bold py-1 px-3 rounded-lg text-sm"
+                        disabled>
+                        Enter
+                    </button>
+                </div>
+
+                <div class="flex items-center mt-2 gap-2">
+                    <button id="auto-enter-btn"
+                        class="bg-purple-600 hover:bg-purple-700 text-white font-bold py-1 px-3 rounded-lg text-sm"
+                        disabled>
+                        Enter Automático
+                    </button>
+                    <select id="auto-enter-count"
+                        class="bg-white border border-gray-300 rounded-lg px-2 py-1 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-blue-500">
+                        <option value="10">10x</option>
+                        <option value="20">20x</option>
+                        <option value="30">30x</option>
+                        <option value="40">40x</option>
+                        <option value="50">50x</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Quick Commands -->
+            <div class="px-4 py-3 border-t">
+                <h3 class="text-gray-700 font-bold mb-2">Comandos Rápidos</h3>
+                <div class="grid grid-cols-2 gap-3">
+                    <div class="col-span-2 flex gap-3">
+                        <button
+                            class="quick-cmd bg-blue-100 hover:bg-blue-200 text-blue-800 py-2 px-3 rounded-lg text-sm font-medium transition-colors shadow-sm"
+                            data-cmd="display ont info summary " disabled>
+                            <i class="fas fa-list mr-1"></i> display ont info
+                        </button>
+                        <select id="onu-number"
+                            class="bg-white border border-gray-300 rounded-lg px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+                            disabled>
+                            <option value="">Slot</option>
+                            <option value="0">0</option>
+                            <option value="1">1</option>
+                            <option value="2">2</option>
+                            <option value="3">3</option>
+                            <option value="4">4</option>
+                            <option value="5">5</option>
+                            <option value="6">6</option>
+                            <option value="7">7</option>
+                        </select>
+                    </div>
+                    <button
+                        class="quick-cmd bg-green-100 hover:bg-green-200 text-green-800 py-2 px-3 rounded-lg text-sm font-medium transition-colors shadow-sm"
+                        data-cmd="provision" disabled>
+                        <i class="fas fa-cog mr-1"></i> provision
+                    </button>
+                    <button
+                        class="quick-cmd bg-red-100 hover:bg-red-200 text-red-800 py-2 px-3 rounded-lg text-sm font-medium transition-colors shadow-sm"
+                        data-cmd="reboot onu" disabled>
+                        <i class="fas fa-power-off mr-1"></i> reboot onu
+                    </button>
+                    <button
+                        class="quick-cmd bg-purple-100 hover:bg-purple-200 text-purple-800 py-2 px-3 rounded-lg text-sm font-medium transition-colors shadow-sm"
+                        data-cmd="show version" disabled>
+                        <i class="fas fa-info-circle mr-1"></i> show version
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="mt-4 text-center text-gray-500 text-xs">
+            Sistema de Provisionamento ONU v1.0<br />
+            Conectando via STelnet na OLT 10.11.104.2 porta 23
+        </div>
+    </div>
+
+    <script>
+        // Defina a URL do seu backend Flask hospedado (exemplo Render)
+        const backendURL = "https://provisionarbackend.onrender.com/";
+
+        const connectBtn = document.getElementById("connect-btn");
+        const terminalOutput = document.getElementById("terminal-output");
+        const commandInput = document.getElementById("command-input");
+        const provisionBtn = document.getElementById("provision-btn");
+        const connectionIndicator = document.getElementById("connection-indicator");
+        const connectionStatusText = document.getElementById("connection-status-text");
+        const quickCmdButtons = document.querySelectorAll(".quick-cmd");
+
+        let connected = false;
+
+        function appendOutput(text, colorClass = "text-gray-200") {
+            const line = document.createElement("div");
+            line.className = colorClass;
+            line.textContent = text;
+            terminalOutput.appendChild(line);
+            terminalOutput.scrollTop = terminalOutput.scrollHeight;
+        }
+
+        function setConnectionStatus(state) {
+            connected = state;
+            commandInput.disabled = !connected;
+            provisionBtn.disabled = !connected;
+            quickCmdButtons.forEach(btn => btn.disabled = !connected);
+            document.getElementById("onu-number").disabled = !connected;
+            document.getElementById("enter-btn").disabled = !connected;
+            document.getElementById("auto-enter-btn").disabled = !connected;
+            if (connected) {
+                connectionIndicator.classList.remove("bg-red-500");
+                connectionIndicator.classList.add("bg-green-500");
+                connectionStatusText.textContent = "Conectado";
+                connectBtn.innerHTML = '<i class="fas fa-unplug mr-2"></i> Desconectar da OLT';
+            } else {
+                connectionIndicator.classList.remove("bg-green-500");
+                connectionIndicator.classList.add("bg-red-500");
+                connectionStatusText.textContent = "Desconectado";
+                connectBtn.innerHTML = '<i class="fas fa-plug mr-2"></i> Conectar à OLT';
+            }
+        }
+
+        async function sendCommandToServer(cmd) {
+            try {
+                const res = await fetch(`${backendURL}/send_command`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ command: cmd }),
+                });
+                const data = await res.json();
+                if (data.output) {
+                    appendOutput(data.output, "text-gray-200");
+                } else {
+                    appendOutput("⚠️ Nenhuma resposta do servidor.", "text-yellow-400");
+                }
+            } catch {
+                appendOutput("❌ Erro ao enviar comando.", "text-red-400");
+            }
+        }
+
+        connectBtn.addEventListener("click", async () => {
+            if (!connected) {
+                try {
+                    const res = await fetch(`${backendURL}/connect`, { method: "POST" });
+                    const data = await res.json();
+
+                    if (data.status === "connected" || data.status === "already_connected") {
+                        appendOutput("✅ Conectado à OLT.", "text-green-400");
+
+                        // Manda comandos enable e config
+                        appendOutput("> enable", "text-yellow-300");
+                        await sendCommandToServer("enable");
+
+                        appendOutput("> config", "text-yellow-300");
+                        await sendCommandToServer("config");
+
+                        setConnectionStatus(true);
+                        appendOutput("Terminal pronto para comandos.", "text-green-400");
+                    } else {
+                        appendOutput("❌ Erro ao conectar: " + data.message, "text-red-400");
+                        setConnectionStatus(false);
+                    }
+                } catch {
+                    appendOutput("❌ Erro de conexão no servidor.", "text-red-400");
+                    setConnectionStatus(false);
+                }
+            } else {
+                try {
+                    await fetch(`${backendURL}/disconnect`, { method: "POST" });
+                    appendOutput("❌ Desconectado da OLT.", "text-red-400");
+                    if (autoEnterInterval) {
+                        clearInterval(autoEnterInterval);
+                        autoEnterInterval = null;
+                        autoEnterBtn.textContent = "Enter Automático";
+                    }
+                    setConnectionStatus(false);
+                } catch {
+                    appendOutput("❌ Erro ao desconectar.", "text-red-400");
+                }
+            }
+        });
+
+        commandInput.addEventListener("keydown", async (e) => {
+            if (e.key === "Enter" || e.keyCode === 13) {
+                e.preventDefault();
+                const cmd = commandInput.value.trim();
+                appendOutput(">", "text-yellow-300");
+
+                try {
+                    const res = await fetch(`${backendURL}/send_command`, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ command: cmd || "\n" }),
+                    });
+                    const data = await res.json();
+                    if (data.output) {
+                        appendOutput(data.output, "text-gray-200");
+                    } else {
+                        appendOutput("⚠️ Nenhuma resposta do servidor.", "text-yellow-400");
+                    }
+                } catch {
+                    appendOutput("❌ Erro ao enviar comando.", "text-red-400");
+                }
+
+                commandInput.value = "";
+            }
+        });
+
+        quickCmdButtons.forEach(btn => {
+            btn.addEventListener("click", async () => {
+                const cmd = btn.getAttribute("data-cmd");
+                if (!cmd) return;
+
+                if (cmd.startsWith("display ont info summary")) {
+                    const slotNumber = document.getElementById("onu-number").value;
+                    if (!slotNumber) {
+                        appendOutput("⚠️ Selecione um slot (0-7) para display ont info", "text-yellow-400");
+                        return;
+                    }
+                    await sendCommandToServer(cmd + slotNumber);
+                } else {
+                    await sendCommandToServer(cmd);
+                }
+            });
+        });
+
+        document.getElementById("enter-btn").addEventListener("click", () => {
+            const event = new KeyboardEvent('keydown', {
+                key: 'Enter',
+                code: 'Enter',
+                keyCode: 13,
+                which: 13,
+                bubbles: true
+            });
+            commandInput.dispatchEvent(event);
+        });
+
+        const autoEnterBtn = document.getElementById("auto-enter-btn");
+        const autoEnterCount = document.getElementById("auto-enter-count");
+        let autoEnterInterval = null;
+
+        autoEnterBtn.addEventListener("click", () => {
+            if (autoEnterInterval) {
+                clearInterval(autoEnterInterval);
+                autoEnterInterval = null;
+                autoEnterBtn.textContent = "Enter Automático";
+                return;
+            }
+
+            const count = parseInt(autoEnterCount.value);
+            let counter = 0;
+
+            autoEnterBtn.textContent = "Parar";
+
+            autoEnterInterval = setInterval(() => {
+                if (!connected || counter >= count) {
+                    clearInterval(autoEnterInterval);
+                    autoEnterInterval = null;
+                    autoEnterBtn.textContent = "Enter Automático";
+                    return;
+                }
+
+                const event = new KeyboardEvent('keydown', {
+                    key: 'Enter',
+                    code: 'Enter',
+                    keyCode: 13,
+                    which: 13,
+                    bubbles: true
+                });
+                commandInput.dispatchEvent(event);
+                counter++;
+            }, 300);
+        });
+
+        setConnectionStatus(false);
+
+        document.getElementById("terminal-output").addEventListener("click", () => {
+            document.getElementById("command-input").focus();
+        });
+    </script>
+</body>
+</html>
